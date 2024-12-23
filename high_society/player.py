@@ -30,29 +30,40 @@ class Player:
         self.bid: List[int] = []
 
     def get_total_money(self) -> int:
+        """Get the total value of all money cards the player has remaining."""
         return sum(self.funds)
 
     def get_total_score(self) -> float:
+        """Get the total value of the player's auction cards."""
         return self.cards_won.get_score()
 
     def can_afford(self, max_bid: int) -> bool:
+        """Check if the player can afford a given bid."""
         return max_bid <= self.get_total_money()
 
     def get_bid(self) -> List[int]:
+        """Get the current bid."""
         return self.bid
 
     def set_bid(self, bid: List[int]) -> None:
-        for card in bid:
-            if card not in self.funds:
-                raise ValueError("Invalid bid: player does not have card")
+        """Set the current bid."""
+        if not self.bid_is_valid(bid):
+            raise ValueError("Invalid bid: player does not have requisite cards")
         else:
             self.bid = bid
 
     def pass_bid(self) -> None:
-        self.bid = [-1]
+        """Pass on the current bid."""
+        self.set_bid([-1])
 
-    def bid_is_valid(self, bid: list[int], current_highest_bid: list[int]) -> bool:
+    def bid_is_valid(
+        self, bid: list[int], current_highest_bid: Optional[list[int]] = None
+    ) -> bool:
         """Check if a bid is valid given the current highest bid."""
+        if (
+            current_highest_bid is None
+        ):  # Use None as default instead of [] to avoid mutable default argument errors
+            current_highest_bid = []
         if bid == [-1]:
             return True  # Passing is always valid
         if sum(bid) <= sum(current_highest_bid):
@@ -65,6 +76,7 @@ class Player:
         return True
 
     def bid_or_pass_randomly(self, current_bid: List[int]) -> List[int]:
+        """Randomly pass or return a valid bid based on the current bid."""
         current_bid_sum = sum(current_bid)
         if current_bid_sum >= self.get_total_money():
             self.pass_bid()
@@ -76,7 +88,8 @@ class Player:
         return self.get_bid()
 
     def get_random_valid_bid(self, current_bid: List[int] = []) -> List[int]:
-        """Uses a nice exponential decay function to chose a bid from the list of valid bids. Weights the lower bids more heavily."""
+        """Uses a nice exponential decay function to chose a bid from the list of valid bids.
+        Weights the lower bids more heavily."""
         valid_bids = self.get_valid_bids(current_bid)
         weights = [exp(-0.5 * i) for i in range(len(valid_bids))]
         total = sum(weights)
@@ -84,6 +97,7 @@ class Player:
         return choices(valid_bids, weights=weights, k=1)[0]
 
     def get_valid_bids(self, current_bid: List[int]) -> List[List[int]]:
+        """Get all valid bids given the current highest"""
         valid_bids = []
         current_bid_sum = sum(current_bid)
 
@@ -95,6 +109,7 @@ class Player:
         return sorted(valid_bids, key=sum)
 
     def reset_bid(self) -> None:
+        """Reset the current bid to empty."""
         self.bid = []
 
     def spend_bid(self) -> None:

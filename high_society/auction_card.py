@@ -12,7 +12,7 @@ class AuctionCard:
         self.theft = False
         self.multiplier = False
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f"{self.name} ({self.card_type}) : {self.value}"
 
     def get_type(self) -> str:
@@ -47,6 +47,7 @@ class MultiplierCard(AuctionCard):
     def __init__(self, name: str, value: float):
         super().__init__(name, "Multiplier")
         self.multiplier = True
+        self.end_game = True
         self.value = value
 
 
@@ -66,12 +67,16 @@ class PasseCard(AuctionCard):
 
 class AuctionCardDeck:
     def __init__(self, cards: Optional[List[AuctionCard]] = None):
-        if cards is None:
+        if (
+            cards is None
+        ):  # Use None as default instead of [] to avoid mutable default argument errors
             self._create_default_deck()
         else:
             self.cards = cards
+        self.shuffle()
 
     def _create_default_deck(self) -> None:
+        """Create a default deck of auction cards"""
         faux_pas = FauxPasCard("Faux Pas")
         passe = PasseCard("Passe", -5)
         scandale = MultiplierCard("Scandale", value=0.5)
@@ -107,17 +112,23 @@ class AuctionCardDeck:
             ten,
         ]
 
+    def __repr__(self) -> str:
+        return str(self.cards)
+
     def shuffle(self) -> None:
+        """Shuffle the deck"""
         random.shuffle(self.cards)
 
     def draw(self) -> AuctionCard:
+        """Draw the top card from the deck"""
         if not self.cards:
             raise Exception("No cards left in the deck.")
-        return self.cards.pop()
+        return self.cards.pop(0)
 
 
 class AuctionCardHand:
     def __init__(self, cards: Optional[List[AuctionCard]] = None):
+        # Use None as default instead of [] to avoid mutable default argument errors
         self.cards: List[AuctionCard] = [] if cards is None else cards
 
     def __str__(self) -> str:
@@ -127,6 +138,7 @@ class AuctionCardHand:
         return len(self.cards)
 
     def win_card(self, card: AuctionCard) -> None:
+        """Add a card to the hand, handling special cases for Faux Pas and Luxury cards"""
         if card.get_type() == "Faux Pas":
             if self.has_luxury_cards():
                 print(
@@ -139,36 +151,41 @@ class AuctionCardHand:
         elif self.has_faux_pas_cards() and card.get_type() == "Luxury":
             print(
                 "You previously won a Faux Pas card but did not have any luxury cards to steal. You do not receive this card, but \
-                  you do lose the Faux Pas card. Press Enter to contine."
+                  you do lose the Faux Pas card."
             )
             self.remove_faux_pas_card()
         else:
             self.cards.append(card)
 
     def has_luxury_cards(self) -> bool:
+        """Check if the hand has any luxury cards"""
         for card in self.cards:
             if card.get_type() == "Luxury":
                 return True
         return False
 
     def has_faux_pas_cards(self) -> bool:
+        """Check if the hand has any Faux Pas cards"""
         for card in self.cards:
             if card.get_type() == "Faux Pas":
                 return True
         return False
 
     def remove_faux_pas_card(self) -> None:
+        """Remove a Faux Pas card from the hand"""
         faux_pas_cards = [card for card in self.cards if card.get_type() == "Faux Pas"]
         if not faux_pas_cards:
             raise Exception("No Faux Pas cards to remove.")
         self.cards.remove(faux_pas_cards[0])
 
     def remove_smallest_luxury_card(self) -> None:
+        """Remove the smallest luxury card from the hand"""
         luxury_cards = [card for card in self.cards if card.get_type() == "Luxury"]
         smallest_card = min(luxury_cards, key=lambda x: x.get_value())
         self.cards.remove(smallest_card)
 
     def get_score(self) -> float:
+        """Calculate the total score of the hand"""
         base_score = sum(
             [
                 card.get_value()
