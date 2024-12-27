@@ -49,6 +49,7 @@ class MultiplierCard(AuctionCard):
         self.multiplier = True
         self.end_game = True
         self.value = value
+        self.disgrace = self.multiplier < 1
 
 
 class FauxPasCard(AuctionCard):
@@ -142,16 +143,16 @@ class AuctionCardHand:
         if card.get_type() == "Faux Pas":
             if self.has_luxury_cards():
                 print(
-                    "You have won a Faux Pas card. You will be able to select a card to be stolen when I implement that \
-                      feature. For now, you will lose your smallest luxury card."
+                    "You have won a Faux Pas card. You will be able to select a card to be stolen when I implement that "
+                    "feature. For now, you will lose your smallest luxury card."
                 )
                 self.remove_smallest_luxury_card()
             else:
                 self.cards.append(card)
         elif self.has_faux_pas_cards() and card.get_type() == "Luxury":
             print(
-                "You previously won a Faux Pas card but did not have any luxury cards to steal. You do not receive this card, but \
-                  you do lose the Faux Pas card."
+                "You previously won a Faux Pas card but did not have any luxury cards to steal. You do not receive this card, but "
+                "you do lose the Faux Pas card."
             )
             self.remove_faux_pas_card()
         else:
