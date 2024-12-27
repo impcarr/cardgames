@@ -119,12 +119,12 @@ class TestPlayer(unittest.TestCase):
             self.assertTrue(sum(result) > 500)
             self.assertTrue(all(card in self.custom_player.funds for card in result))
 
-    def test_get_random_valid_bid(self):
+    def test_get_random_valid_raise(self):
         """Test random valid bid generation"""
         self.custom_player = Player("Custom Player", [1000, 2000])
         current_bid = [500]
 
-        random_bid = self.custom_player.get_random_valid_bid(current_bid)
+        random_bid = self.custom_player.get_random_valid_raise(current_bid)
 
         # Check bid is valid
         self.assertTrue(sum(random_bid) > sum(current_bid))
