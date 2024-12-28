@@ -121,13 +121,9 @@ class Player:
         return choices(valid_bids, weights=weights, k=1)[0]
 
     def get_available_raises(self) -> List[int]:
-        funds_to_raise = [fund for fund in self.get_funds()] # Can't just do a simple 'if fund not in self.get_bid()' because 
-        for fund in self.get_bid():                          # we only want to remove single copies
-            try:
-                funds_to_raise.remove(fund)
-            except ValueError:
-                print(f"Tried to remove {fund} from {funds_to_raise} and failed.")
-        return funds_to_raise
+        fund_counter = Counter(self.get_funds())
+        bid_counter = Counter(self.get_bid())
+        return list((fund_counter - bid_counter).elements())
 
     def get_valid_bids(self, current_highest_bid: List[int]) -> List[List[int]]:
         """Get all valid bids given the current highest bid and the player's current bid."""
