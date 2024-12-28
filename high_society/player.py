@@ -8,10 +8,10 @@ from auction_card import AuctionCardHand, AuctionCard
 
 class Player:
     def __init__(self, name: str, custom_funds: Optional[List[int]] = None):
-        self.name = name
+        self._name = name
         # Standard money cards in the game
         if custom_funds is None:
-            self.funds = [
+            self._funds = [
                 1000,
                 2000,
                 3000,
@@ -25,58 +25,68 @@ class Player:
                 25000,
             ]
         else:
-            self.funds = custom_funds
-        self.cards_won = AuctionCardHand()
-        self.bid: List[int] = []
+            self._funds = custom_funds
+        self._cards_won = AuctionCardHand()
+        self._bid: List[int] = []
 
     def __repr__(self) -> str:
-        return self.name
+        return self._name
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Get the player's name."""
-        return self.name
+        return self._name
 
-    def get_funds(self) -> List[int]:
+    @property
+    def funds(self) -> List[int]:
         """Get the player's money cards."""
-        return self.funds
+        return self._funds
 
-    def get_cards_won(self) -> AuctionCardHand:
-        """Get the player's auction cards."""
-        return self.cards_won
-
-    def get_total_money(self) -> int:
+    @property
+    def total_money(self) -> int:
         """Get the total value of all money cards the player has remaining."""
-        return sum(self.funds)
+        return sum(self._funds)
 
-    def get_total_score(self) -> float:
-        """Get the total value of the player's auction cards."""
-        return self.cards_won.get_score()
-
-    def can_afford(self, max_bid: int) -> bool:
-        """Check if the player can afford a given bid."""
-        return max_bid <= self.get_total_money()
-
-    def get_bid(self) -> List[int]:
+    @property
+    def bid(self) -> List[int]:
         """Get the current bid."""
-        return self.bid
+        return self._bid
 
-    def set_bid(self, bid: List[int]) -> None:
+    @bid.setter
+    def bid(self, bid: List[int]) -> None:
         """Set the current bid."""
         if not self.bid_is_valid(bid):
             raise ValueError("Invalid bid: player does not have requisite cards")
         else:
-            self.bid = bid
+            self._bid = bid
+
+    def can_afford(self, max_bid: int) -> bool:
+        """Check if the player can afford a given bid."""
+        return max_bid <= self.total_money
+
+    def reset_bid(self) -> None:
+        """Reset the current bid to empty."""
+        self._bid = []
 
     def pass_bid(self) -> None:
         """Pass on the current bid."""
-        self.set_bid([-1])
+        self.bid = [-1]
 
     def raise_bid(self, raise_amount: List[int]) -> None:
-        raised_bid = self.get_bid() + raise_amount
+        """Raises the players bid by the amount specified."""
+        raised_bid = self.bid + raise_amount
         if not self.bid_is_valid(raised_bid):
-            raise ValueError(f"Invalid bid: player does not have requisite cards. Has {self.get_funds()} available, previously bid {self.get_bid()}, and is trying to raise by {raise_amount} for a total raised bid of {raised_bid}")
+            raise ValueError(
+                f"Invalid bid: player does not have requisite cards. Has {self.funds} available, previously bid {self.bid}, and is trying to raise by {raise_amount} for a total raised bid of {raised_bid}"
+            )
         else:
-            self.set_bid(raised_bid)
+            self.bid = raised_bid
+
+    def spend_bid(self) -> None:
+        """Remove current bid from funds and reset current bid to empty."""
+        for card in self.bid:
+            self._funds.remove(card)
+        self.reset_bid()
 
     def bid_is_valid(
         self, bid: list[int], current_highest_bid: Optional[list[int]] = None
@@ -90,7 +100,7 @@ class Player:
             return True  # Passing is always valid
         if sum(bid) <= sum(current_highest_bid):
             return False
-        available_fund_counts = Counter(self.funds)
+        available_fund_counts = Counter(self._funds)
         bid_counts = Counter(bid)
         for denomination, count in bid_counts.items():
             if available_fund_counts[denomination] < count:
@@ -99,17 +109,17 @@ class Player:
 
     def bid_or_pass_randomly(self, current_highest_bid: List[int]) -> List[int]:
         """Randomly pass or return a valid bid based on the current bid."""
-        if self.get_bid() == [-1]:
-            return self.get_bid()
+        if self.bid == [-1]:
+            return self.bid
         current_highest_bid_sum = sum(current_highest_bid)
-        if current_highest_bid_sum >= self.get_total_money():
+        if current_highest_bid_sum >= self.total_money:
             self.pass_bid()
         else:
             if random() < 0.33:
                 self.pass_bid()
             else:
                 self.raise_bid(self.get_random_valid_raise(current_highest_bid))
-        return self.get_bid()
+        return self.bid
 
     def get_random_valid_raise(self, current_highest_bid: List[int] = []) -> List[int]:
         """Uses a nice exponential decay function to choose a bid from the list of valid bids.
@@ -121,15 +131,15 @@ class Player:
         return choices(valid_bids, weights=weights, k=1)[0]
 
     def get_available_raises(self) -> List[int]:
-        fund_counter = Counter(self.get_funds())
-        bid_counter = Counter(self.get_bid())
+        fund_counter = Counter(self.funds)
+        bid_counter = Counter(self.bid)
         return list((fund_counter - bid_counter).elements())
 
     def get_valid_bids(self, current_highest_bid: List[int]) -> List[List[int]]:
         """Get all valid bids given the current highest bid and the player's current bid."""
         valid_bids = []
         current_highest_bid_sum = sum(current_highest_bid)
-        most_recent_bid_sum = sum(self.get_bid())
+        most_recent_bid_sum = sum(self.bid)
         raise_minimum = current_highest_bid_sum - most_recent_bid_sum
 
         funds_available = self.get_available_raises()
@@ -141,16 +151,15 @@ class Player:
 
         return sorted(valid_bids, key=sum)
 
-    def reset_bid(self) -> None:
-        """Reset the current bid to empty."""
-        self.bid = []
-
-    def spend_bid(self) -> None:
-        """Remove current bid from funds and reset current bid to empty."""
-        for card in self.get_bid():
-            self.funds.remove(card)
-        self.reset_bid()
+    @property
+    def cards_won(self) -> AuctionCardHand:
+        """Get the player's auction cards."""
+        return self._cards_won
 
     def win_card(self, card: AuctionCard) -> None:
         """Add a card to the player's collection."""
-        self.cards_won.win_card(card)
+        self._cards_won.win_card(card)
+
+    def get_total_score(self) -> float:
+        """Get the total value of the player's auction cards."""
+        return self._cards_won.get_score()
