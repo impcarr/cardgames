@@ -90,7 +90,7 @@ class HighSociety:
                 self.current_bid = player_bid
             self._next_player()
         for player in self.players:
-            print(f"{player.get_name()} has bid {player.get_bid()}")
+            print(f"{player.name} has bid {player.bid}")
         print(f"{self.passed_players} have all passed")
         self._next_player()
         print(f"{self.get_current_player()} wins the auction!")
@@ -107,7 +107,7 @@ class HighSociety:
             player_bid = self.get_current_player().bid_or_pass_randomly(
                 self.current_bid
             )
-            print(self.get_current_player().get_name())
+            print(self.get_current_player().name)
             print(player_bid)
             if player_bid == [-1]:
                 self.passed_players.add(self.get_current_player())
@@ -145,9 +145,9 @@ class HighSociety:
 
     def get_winner(self) -> Optional[Player]:
         """Get the winner of the game"""
-        lowest_money = min(player.get_total_money() for player in self.players)
+        lowest_money = min(player.total_money for player in self.players)
         eligible_winners = [
-            player for player in self.players if player.get_total_money() > lowest_money
+            player for player in self.players if player.total_money > lowest_money
         ]
         if not eligible_winners:
             return None
@@ -163,7 +163,7 @@ def play_sample_game() -> Optional[Player]:
         card_count += 1
 
         print(
-            f"This round of the auction we are bidding {'to win' if not game.get_auction_card().is_disgrace() else 'to avoid'} the card: {game.get_auction_card().get_name()}"
+            f"This round of the auction we are bidding {'to win' if not game.get_auction_card().is_disgrace() else 'to avoid'} the card: {game.get_auction_card().name}"
         )
         print(
             f"This card {'makes' if game.get_auction_card().is_end_game() else 'does not make'} progress towards ending the game."
@@ -174,10 +174,10 @@ def play_sample_game() -> Optional[Player]:
 
         print(f"{game.hold_auction()} has won {game.get_auction_card()}")
         for player in game.get_players():
-            print(f"{player.get_name()} has the funds {player.get_funds()} remaining.")
-            print(f"{player.get_name()} has {player.get_total_score()} points.")
+            print(f"{player.name} has the funds {player.funds} remaining.")
+            print(f"{player.name} has {player.get_total_score()} points.")
             print(
-                f"{player.get_name()} has won {'no cards' if not player.get_cards_won() else player.get_cards_won()} "
+                f"{player.name} has won {'no cards' if not player.cards_won else player.cards_won} "
                 f"and has a total score of {player.get_total_score()} points."
             )
 
@@ -189,7 +189,7 @@ def play_sample_game() -> Optional[Player]:
 
     for player in game.get_players():
         print(
-            f"{player.get_name()}: {player.get_total_score()} with {player.get_total_money()} remaining funds."
+            f"{player.name}: {player.get_total_score()} with {player.total_money} remaining funds."
         )
     return game.get_winner()
 
