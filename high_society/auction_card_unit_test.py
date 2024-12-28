@@ -8,9 +8,9 @@ class TestBaseAuctionCard(unittest.TestCase):
 
     def test_base_card_initialization(self):
         """Test if base card is initialized with correct attributes"""
-        self.assertEqual(self.base_card.get_name(), "Test Card")
-        self.assertEqual(self.base_card.get_type(), "Test Type")
-        self.assertEqual(self.base_card.get_value(), 0.0)
+        self.assertEqual(self.base_card.name, "Test Card")
+        self.assertEqual(self.base_card.type, "Test Type")
+        self.assertEqual(self.base_card.value, 0.0)
         self.assertFalse(self.base_card.is_end_game())
         self.assertFalse(self.base_card.is_disgrace())
         self.assertFalse(self.base_card.is_theft())
@@ -23,9 +23,9 @@ class TestLuxuryCard(unittest.TestCase):
 
     def test_luxury_card_initialization(self):
         """Test if luxury card is initialized correctly"""
-        self.assertEqual(self.luxury_card.get_name(), "Luxury Test")
-        self.assertEqual(self.luxury_card.get_type(), "Luxury")
-        self.assertEqual(self.luxury_card.get_value(), 10.0)
+        self.assertEqual(self.luxury_card.name, "Luxury Test")
+        self.assertEqual(self.luxury_card.type, "Luxury")
+        self.assertEqual(self.luxury_card.value, 10.0)
         self.assertFalse(self.luxury_card.is_multiplier())
         self.assertFalse(self.luxury_card.is_theft())
         self.assertFalse(self.luxury_card.is_disgrace())
@@ -36,9 +36,9 @@ class TestMultiplierCard(unittest.TestCase):
 
     def test_multiplier_card_initialization(self):
         """Test if multiplier card is initialized correctly"""
-        self.assertEqual(self.multiplier_card.get_name(), "Multiplier Test")
-        self.assertEqual(self.multiplier_card.get_type(), "Multiplier")
-        self.assertEqual(self.multiplier_card.get_value(), 2.0)
+        self.assertEqual(self.multiplier_card.name, "Multiplier Test")
+        self.assertEqual(self.multiplier_card.type, "Multiplier")
+        self.assertEqual(self.multiplier_card.value, 2.0)
         self.assertTrue(self.multiplier_card.is_multiplier())
 
 class TestFauxPasCard(unittest.TestCase):
@@ -47,8 +47,8 @@ class TestFauxPasCard(unittest.TestCase):
 
     def test_faux_pas_card_initialization(self):
         """Test if faux pas card is initialized correctly"""
-        self.assertEqual(self.faux_pas_card.get_name(), "Faux Pas Test")
-        self.assertEqual(self.faux_pas_card.get_type(), "Faux Pas")
+        self.assertEqual(self.faux_pas_card.name, "Faux Pas Test")
+        self.assertEqual(self.faux_pas_card.type, "Faux Pas")
         self.assertTrue(self.faux_pas_card.is_theft())
         self.assertTrue(self.faux_pas_card.is_disgrace())
 
@@ -58,22 +58,35 @@ class TestPasseCard(unittest.TestCase):
 
     def test_passe_card_initialization(self):
         """Test if passe card is initialized correctly"""
-        self.assertEqual(self.passe_card.get_name(), "Passe Test")
-        self.assertEqual(self.passe_card.get_type(), "Passe")
-        self.assertEqual(self.passe_card.get_value(), -5.0)
+        self.assertEqual(self.passe_card.name, "Passe Test")
+        self.assertEqual(self.passe_card.type, "Passe")
+        self.assertEqual(self.passe_card.value, -5.0)
         self.assertTrue(self.passe_card.is_disgrace())
 
 class TestAuctionCardDeck(unittest.TestCase):
     def setUp(self):
         self.deck = AuctionCardDeck()
 
+    def test_repr(self):
+        """Test the AuctionCardDeck __repr__ method"""
+        self.passe_card = PasseCard("Passe Test", 5.0)
+        self.custom_deck = AuctionCardDeck([self.passe_card])
+        self.assertEqual(repr(self.custom_deck), "[Passe Test (Passe) : -5.0]")
+
     def test_default_deck_initialization(self):
         """Test if default deck is created with correct number of cards"""
         self.assertEqual(len(self.deck.cards), 16)  # Based on _create_default_deck method
 
+    def test_custom_deck_initialization(self):
+        """Test if custom deck is created correctly"""
+        self.passe_card = PasseCard("Passe Test", 5.0)
+        self.luxury_card = LuxuryCard("Luxury Test", 10)
+        self.custom_deck = AuctionCardDeck([self.passe_card, self.luxury_card])
+        self.assertEqual(len(self.custom_deck.cards), 2)
+
     def test_default_deck_composition(self):
         """Test if default deck contains correct card types"""
-        card_types = [card.get_type() for card in self.deck.cards]
+        card_types = [card.type for card in self.deck.cards]
         self.assertIn("Faux Pas", card_types)
         self.assertIn("Passe", card_types)
         self.assertIn("Multiplier", card_types)
@@ -84,8 +97,14 @@ class TestAuctionCardDeck(unittest.TestCase):
         initial_length = len(self.deck.cards)
         drawn_card = self.deck.draw()
         
+        # Test drawing when there is a card to draw
         self.assertEqual(len(self.deck.cards), initial_length - 1)
         self.assertIsInstance(drawn_card, AuctionCard)
+
+        # Test drawing from an empty deck
+        self.custom_deck = AuctionCardDeck([])
+        with self.assertRaises(Exception):
+            self.custom_deck.draw()
 
 class TestAuctionCardHand(unittest.TestCase):
     def setUp(self):
@@ -95,6 +114,28 @@ class TestAuctionCardHand(unittest.TestCase):
         self.multiplier_card = MultiplierCard("Multiplier", 2.0)
         self.theft_card = FauxPasCard("Faux Pas")
         self.passe_card = PasseCard("Passe", 5.0)
+
+    def test_len(self):
+        """Test the __len__ implementation"""
+        self.hand.win_card(self.luxury_card)
+        self.assertEqual(len(self.hand), 1)
+
+    def test_eq(self):
+        """Test the __eq__ implementation"""
+        self.second_hand = AuctionCardHand()
+        self.list_hand = [self.luxury_card]
+
+        self.hand.win_card(self.luxury_card)
+        self.second_hand.win_card(self.luxury_card)
+
+        # Test equality of two AuctionCardHands
+        self.assertEqual(self.hand, self.second_hand)
+
+        # Test equality of AuctionCardHand and equivalent list
+        self.assertEqual(self.hand, self.list_hand)
+
+        # Test equality is false on other types
+        self.assertNotEqual(self.hand, 1)
 
     def test_win_luxury_card(self):
         """Test winning a luxury card"""

@@ -4,37 +4,44 @@ from typing import List, Optional
 
 class AuctionCard:
     def __init__(self, name: str, card_type: str):
-        self.card_type = card_type
-        self.name = name
-        self.value = 0.0
-        self.end_game = False
-        self.disgrace = False
-        self.theft = False
-        self.multiplier = False
+        self._card_type = card_type
+        self._name = name
+        self._value = 0.0
+        self._end_game = False
+        self._disgrace = False
+        self._theft = False
+        self._multiplier = False
 
     def __repr__(self) -> str:
-        return f"{self.name} ({self.card_type}) : {self.value}"
+        return f"{self._name} ({self._card_type}) : {self._value}"
 
-    def get_type(self) -> str:
-        return self.card_type
+    @property
+    def type(self) -> str:
+        return self._card_type
 
-    def get_name(self) -> str:
-        return self.name
+    @property
+    def name(self) -> str:
+        return self._name
 
-    def get_value(self) -> float:
-        return self.value
+    @property
+    def value(self) -> float:
+        return self._value
+    
+    @value.setter
+    def value(self, value: float):
+        self._value = value
 
     def is_end_game(self) -> bool:
-        return self.end_game
+        return self._end_game
 
     def is_disgrace(self) -> bool:
-        return self.disgrace
+        return self._disgrace
 
     def is_theft(self) -> bool:
-        return self.theft
+        return self._theft
 
     def is_multiplier(self) -> bool:
-        return self.multiplier
+        return self._multiplier
 
 
 class LuxuryCard(AuctionCard):
@@ -46,24 +53,24 @@ class LuxuryCard(AuctionCard):
 class MultiplierCard(AuctionCard):
     def __init__(self, name: str, value: float):
         super().__init__(name, "Multiplier")
-        self.multiplier = True
-        self.end_game = True
-        self.value = value
-        self.disgrace = self.multiplier < 1
+        self._multiplier = True
+        self._end_game = True
+        self._value = value
+        self._disgrace = self._multiplier < 1
 
 
 class FauxPasCard(AuctionCard):
     def __init__(self, name: str):
         super().__init__(name, "Faux Pas")
-        self.theft = True
-        self.disgrace = True
+        self._theft = True
+        self._disgrace = True
 
 
 class PasseCard(AuctionCard):
     def __init__(self, name: str, value: float):
         super().__init__(name, "Passe")
-        self.value = -abs(value)
-        self.disgrace = True
+        self._value = -abs(value)
+        self._disgrace = True
 
 
 class AuctionCardDeck:
@@ -141,11 +148,13 @@ class AuctionCardHand:
     def __eq__(self, other) -> bool:
         if isinstance(other, AuctionCardHand):
             return self.cards == other.cards
+        elif isinstance(other, List):
+            return self.cards == other
         return NotImplemented
 
     def win_card(self, card: AuctionCard) -> None:
         """Add a card to the hand, handling special cases for Faux Pas and Luxury cards"""
-        if card.get_type() == "Faux Pas":
+        if card.type == "Faux Pas":
             if self.has_luxury_cards():
                 print(
                     "You have won a Faux Pas card. You will be able to select a card to be stolen when I implement that "
@@ -154,7 +163,7 @@ class AuctionCardHand:
                 self.remove_smallest_luxury_card()
             else:
                 self.cards.append(card)
-        elif self.has_faux_pas_cards() and card.get_type() == "Luxury":
+        elif self.has_faux_pas_cards() and card.type == "Luxury":
             print(
                 "You previously won a Faux Pas card but did not have any luxury cards to steal. You do not receive this card, but "
                 "you do lose the Faux Pas card."
@@ -166,41 +175,41 @@ class AuctionCardHand:
     def has_luxury_cards(self) -> bool:
         """Check if the hand has any luxury cards"""
         for card in self.cards:
-            if card.get_type() == "Luxury":
+            if card.type == "Luxury":
                 return True
         return False
 
     def has_faux_pas_cards(self) -> bool:
         """Check if the hand has any Faux Pas cards"""
         for card in self.cards:
-            if card.get_type() == "Faux Pas":
+            if card.type == "Faux Pas":
                 return True
         return False
 
     def remove_faux_pas_card(self) -> None:
         """Remove a Faux Pas card from the hand"""
-        faux_pas_cards = [card for card in self.cards if card.get_type() == "Faux Pas"]
+        faux_pas_cards = [card for card in self.cards if card.type == "Faux Pas"]
         if not faux_pas_cards:
             raise Exception("No Faux Pas cards to remove.")
         self.cards.remove(faux_pas_cards[0])
 
     def remove_smallest_luxury_card(self) -> None:
         """Remove the smallest luxury card from the hand"""
-        luxury_cards = [card for card in self.cards if card.get_type() == "Luxury"]
-        smallest_card = min(luxury_cards, key=lambda x: x.get_value())
+        luxury_cards = [card for card in self.cards if card.type == "Luxury"]
+        smallest_card = min(luxury_cards, key=lambda x: x.value)
         self.cards.remove(smallest_card)
 
     def get_score(self) -> float:
         """Calculate the total score of the hand"""
         base_score = sum(
             [
-                card.get_value()
+                card.value
                 for card in self.cards
-                if card.get_type() == "Luxury" or card.get_type() == "Passe"
+                if card.type == "Luxury" or card.type == "Passe"
             ]
         )
         mult = 1.0
         for card in self.cards:
             if card.is_multiplier():
-                mult *= card.get_value()
+                mult *= card.value
         return base_score * mult
