@@ -137,6 +137,11 @@ class AuctionCardHand:
 
     def __len__(self) -> int:
         return len(self.cards)
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, AuctionCardHand):
+            return self.cards == other.cards
+        return NotImplemented
 
     def win_card(self, card: AuctionCard) -> None:
         """Add a card to the hand, handling special cases for Faux Pas and Luxury cards"""
