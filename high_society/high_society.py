@@ -5,6 +5,9 @@ from auction_card import AuctionCardDeck, AuctionCard
 
 DEFAULT_GAME_LENGTH = 4
 
+class NoActivePlayerError(Exception):
+    """Raised when there are no active players."""
+    pass
 
 class HighSociety:
     def __init__(self, player_names: List[str]):
@@ -155,12 +158,28 @@ class HighSociety:
 
     def _next_player(self) -> None:
         """Move to the next active player.
-        Raise exception if there is no active player"""
+        
+        Rotates the player list until reaching a player who hasn't passed.
+        
+        Raises:
+            NoActivePlayerError: If all players have passed or no players exist
+        Side Effects:
+            Modifies self.players list order
+        """
+        if not self.players:
+            raise NoActivePlayerError("No players in game")
         if self.passed_players.issuperset(self.players):
-            raise Exception("All players have passed")
-        self.players.append(self.players.pop(0))
-        while self.players[0] in self.passed_players:
+            raise NoActivePlayerError("All players have passed")
+        
+        rotations = 0
+        while rotations < len(self.players):
             self.players.append(self.players.pop(0))
+            if self.players[0] not in self.passed_players:
+                return
+            rotations+=1
+        
+        raise NoActivePlayerError("No active players found after full rotation")
+        
 
     def calculate_scores(self) -> dict[Player, float]:
         """Calculate the scores for each player"""
