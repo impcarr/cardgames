@@ -8,67 +8,97 @@ DEFAULT_GAME_LENGTH = 4
 
 class HighSociety:
     def __init__(self, player_names: List[str]):
-        self.players = [Player(name) for name in player_names]
-        shuffle(self.players)
-        self.deck = AuctionCardDeck()
-        self.game_progress = 0
-        self.current_card: AuctionCard
-        self.passed_players: set[Player] = set()
-        self.current_bid: List[int] = [0]
-        self.scores: dict[Player, float] = {}
+        self._players = [Player(name) for name in player_names]
+        shuffle(self._players)
+        self._deck = AuctionCardDeck()
+        self._game_progress = 0
+        self._current_card: AuctionCard
+        self._passed_players: set[Player] = set()
+        self._current_bid: List[int] = [0]
+        self._scores: dict[Player, float] = {}
 
-    def get_players(self) -> List[Player]:
+    @property
+    def players(self) -> List[Player]:
         """Get the list of players"""
-        return self.players
+        return self._players
 
-    def set_auction_card(self, card: AuctionCard) -> None:
-        """Set the current auction card"""
-        self.current_card = card
+    @property
+    def current_card(self) -> AuctionCard:
+        """Get the current auction card, if there is one"""
+        return self._current_card
 
-    def get_auction_card(self) -> AuctionCard:
-        """Get the current auction card"""
-        return self.current_card
+    @current_card.setter
+    def current_card(self, new_card: AuctionCard) -> None:
+        """Sets a new card to be bid on"""
+        self._current_card = new_card
+
+    @property
+    def game_progress(self) -> int:
+        """Get the current game progress"""
+        return self._game_progress
+
+    @property
+    def current_player(self) -> Player:
+        """Get the current player"""
+        return self._players[0]
+    
+    @property
+    def deck(self) -> AuctionCardDeck:
+        """Get the undrawn AuctionCardDeck"""
+        return self._deck
+    
+    @property
+    def current_bid(self) -> List[int]:
+        """Gets the current_bid"""
+        return self._current_bid
+    
+    @current_bid.setter
+    def current_bid(self, new_bid: List[int]) -> None:
+        """Sets current_bid equal to the passed bid"""
+        self._current_bid = new_bid
+
+    @property
+    def passed_players(self) -> set[Player]:
+        """Returns the set of passed players"""
+        return self._passed_players
+    
+    @property
+    def scores(self) -> dict[Player, float]:
+        """Returns the current players and their scores. Does not perform logic to disqualify the player(s) who have spent the most money"""
+        return self._scores
 
     def reset_passed_players(self) -> None:
         """Reset the set of passed players"""
-        self.passed_players = set()
+        self._passed_players = set()
 
     def reset_bids(self) -> None:
-        """Reset the current bid"""
+        """Reset the current bid and all player bids"""
         self.current_bid = []
         for player in self.players:
             player.reset_bid()
 
     def increment_game_progress(self) -> None:
         """Increment the game progress"""
-        self.game_progress += 1
-
-    def get_game_progress(self) -> int:
-        """Get the current game progress"""
-        return self.game_progress
-
-    def get_current_player(self) -> Player:
-        """Get the current player"""
-        return self.players[0]
+        self._game_progress += 1
 
     def draw_new_auction_card(self) -> Optional[AuctionCard]:
         """Start a new auction by revealing the top card
         Returns the current card or None if the current card ends the game."""
-        self.set_auction_card(self.deck.draw())
-        if self.get_auction_card().is_end_game():
+        self.current_card = self.deck.draw()
+        if self.current_card.is_end_game():
             self.increment_game_progress()
-        if self.get_game_progress() == DEFAULT_GAME_LENGTH:
+        if self.game_progress == DEFAULT_GAME_LENGTH:
             return None
-        return self.get_auction_card()
+        return self.current_card
 
     def hold_auction(self) -> Player:
         """Hold an auction for the current card
         Returns the player who won the auction"""
-        if self.get_auction_card() is None:
+        if self.current_card is None:
             raise ValueError("No card to auction")
         self.reset_bids()
         self.reset_passed_players()
-        if self.get_auction_card().is_disgrace():
+        if self.current_card.is_disgrace():
             return self.hold_auction_to_avoid()
         else:
             return self.hold_auction_to_win()
@@ -76,16 +106,16 @@ class HighSociety:
     def hold_auction_to_win(self) -> Player:
         """Hold an auction to win the current card.
         Returns the player who obtains the auctioned card."""
-        self.current_bid = [0]
+        self.reset_bids()
         while len(self.passed_players) < len(self.players) - 1:
             print(f"{len(self.passed_players)} have passed out of {len(self.players)}")
-            print(f"{self.get_current_player()} now bidding...")
-            player_bid = self.get_current_player().bid_or_pass_randomly(
+            print(f"{self.current_player} now bidding...")
+            player_bid = self.current_player.bid_or_pass_randomly(
                 self.current_bid
             )
-            print(f"{self.get_current_player()} bids {player_bid}")
+            print(f"{self.current_player} bids {player_bid}")
             if player_bid == [-1]:
-                self.passed_players.add(self.get_current_player())
+                self.passed_players.add(self.current_player)
             else:
                 self.current_bid = player_bid
             self._next_player()
@@ -93,10 +123,10 @@ class HighSociety:
             print(f"{player.name} has bid {player.bid}")
         print(f"{self.passed_players} have all passed")
         self._next_player()
-        print(f"{self.get_current_player()} wins the auction!")
-        self.get_current_player().win_card(self.current_card)
-        self.get_current_player().spend_bid()
-        return self.get_current_player()
+        print(f"{self.current_player} wins the auction!")
+        self.current_player.win_card(self.current_card)
+        self.current_player.spend_bid()
+        return self.current_player
 
     def hold_auction_to_avoid(self) -> Player:
         """Hold an auction to avoid the current card.
@@ -104,13 +134,13 @@ class HighSociety:
         self.current_bid = [0]
         while len(self.passed_players) == 0:
             print(f"{len(self.passed_players)} have passed.")
-            player_bid = self.get_current_player().bid_or_pass_randomly(
+            player_bid = self.current_player.bid_or_pass_randomly(
                 self.current_bid
             )
-            print(self.get_current_player().name)
+            print(self.current_player.name)
             print(player_bid)
             if player_bid == [-1]:
-                self.passed_players.add(self.get_current_player())
+                self.passed_players.add(self.current_player)
             else:
                 self.current_bid = player_bid
             self._next_player()
@@ -163,17 +193,17 @@ def play_sample_game() -> Optional[Player]:
         card_count += 1
 
         print(
-            f"This round of the auction we are bidding {'to win' if not game.get_auction_card().is_disgrace() else 'to avoid'} the card: {game.get_auction_card().name}"
+            f"This round of the auction we are bidding {'to win' if not game.current_card.is_disgrace() else 'to avoid'} the card: {game.current_card.name}"
         )
         print(
-            f"This card {'makes' if game.get_auction_card().is_end_game() else 'does not make'} progress towards ending the game."
+            f"This card {'makes' if game.current_card.is_end_game() else 'does not make'} progress towards ending the game."
         )
         print(
-            f"We have seen {game.get_game_progress()} out of {DEFAULT_GAME_LENGTH} game ending cards."
+            f"We have seen {game.game_progress} out of {DEFAULT_GAME_LENGTH} game ending cards."
         )
 
-        print(f"{game.hold_auction()} has won {game.get_auction_card()}")
-        for player in game.get_players():
+        print(f"{game.hold_auction()} has won {game.current_card}")
+        for player in game.players:
             print(f"{player.name} has the funds {player.funds} remaining.")
             print(f"{player.name} has {player.get_total_score()} points.")
             print(
@@ -187,7 +217,7 @@ def play_sample_game() -> Optional[Player]:
     print(f"\nFinal Scores: {scores}")
     print(f"Winner: {game.get_winner()}")
 
-    for player in game.get_players():
+    for player in game.players:
         print(
             f"{player.name}: {player.get_total_score()} with {player.total_money} remaining funds."
         )
