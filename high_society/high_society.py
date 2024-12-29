@@ -1,5 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Set
 from random import shuffle
+from dataclasses import dataclass, field
 from player import Player
 from auction_card import AuctionCardDeck, AuctionCard
 
@@ -9,6 +10,12 @@ class NoActivePlayerError(Exception):
     """Raised when there are no active players."""
     pass
 
+# TODO: add player bids for training purposes
+@dataclass
+class AuctionState:
+    passed_players: Set[Player] = field(default_factory=set)
+    current_bid: List[int] = field(default_factory=list)
+
 class HighSociety:
     def __init__(self, player_names: List[str]):
         self._players = [Player(name) for name in player_names]
@@ -16,8 +23,7 @@ class HighSociety:
         self._deck = AuctionCardDeck()
         self._game_progress = 0
         self._current_card: AuctionCard
-        self._passed_players: set[Player] = set()
-        self._current_bid: List[int] = [0]
+        self.auction_state = AuctionState()
         self._scores: dict[Player, float] = {}
 
     @property
@@ -49,34 +55,35 @@ class HighSociety:
     def deck(self) -> AuctionCardDeck:
         """Get the undrawn AuctionCardDeck"""
         return self._deck
-    
-    @property
-    def current_bid(self) -> List[int]:
-        """Gets the current_bid"""
-        return self._current_bid
-    
-    @current_bid.setter
-    def current_bid(self, new_bid: List[int]) -> None:
-        """Sets current_bid equal to the passed bid"""
-        self._current_bid = new_bid
 
     @property
     def passed_players(self) -> set[Player]:
         """Returns the set of passed players"""
-        return self._passed_players
+        return self.auction_state.passed_players
+    
+    def mark_player_passed(self, player: Player) -> None:
+        """Mark a player as having passed the current auction.
+        
+        Args:
+            player: The player who passed
+            
+        Raises:
+            ValueError: If player is not in the game
+        """
+        if player not in self.players:
+            raise ValueError("Cannot mark unknown player as passed")
+        self.auction_state.passed_players.add(player)
     
     @property
     def scores(self) -> dict[Player, float]:
         """Returns the current players and their scores. Does not perform logic to disqualify the player(s) who have spent the most money"""
         return self._scores
 
-    def reset_passed_players(self) -> None:
-        """Reset the set of passed players"""
-        self._passed_players = set()
-
-    def reset_bids(self) -> None:
-        """Reset the current bid and all player bids"""
-        self.current_bid = []
+    def reset_auction(self) -> None:
+        """Reset the auction for a new round.
+        
+        Resets the current max bid and all players' pass status and bids"""
+        self.auction_state = AuctionState()
         for player in self.players:
             player.reset_bid()
 
@@ -99,8 +106,7 @@ class HighSociety:
         Returns the player who won the auction"""
         if self.current_card is None:
             raise ValueError("No card to auction")
-        self.reset_bids()
-        self.reset_passed_players()
+        self.reset_auction()
         if self.current_card.is_disgrace():
             return self.hold_auction_to_avoid()
         else:
@@ -109,18 +115,17 @@ class HighSociety:
     def hold_auction_to_win(self) -> Player:
         """Hold an auction to win the current card.
         Returns the player who obtains the auctioned card."""
-        self.reset_bids()
         while len(self.passed_players) < len(self.players) - 1:
             print(f"{len(self.passed_players)} have passed out of {len(self.players)}")
             print(f"{self.current_player} now bidding...")
             player_bid = self.current_player.bid_or_pass_randomly(
-                self.current_bid
+                self.auction_state.current_bid
             )
             print(f"{self.current_player} bids {player_bid}")
             if player_bid == [-1]:
-                self.passed_players.add(self.current_player)
+                self.mark_player_passed(self.current_player)
             else:
-                self.current_bid = player_bid
+                self.auction_state.current_bid = player_bid
             self._next_player()
         for player in self.players:
             print(f"{player.name} has bid {player.bid}")
@@ -134,19 +139,18 @@ class HighSociety:
     def hold_auction_to_avoid(self) -> Player:
         """Hold an auction to avoid the current card.
         Returns the player who obtains the auctioned card."""
-        self.current_bid = [0]
         while len(self.passed_players) == 0:
             print(f"{len(self.passed_players)} have passed.")
             player_bid = self.current_player.bid_or_pass_randomly(
-                self.current_bid
+                self.auction_state.current_bid
             )
             print(self.current_player.name)
             print(player_bid)
             if player_bid == [-1]:
-                self.passed_players.add(self.current_player)
+                self.mark_player_passed(self.current_player)
             else:
-                self.current_bid = player_bid
-            self._next_player()
+                self.auction_state.current_bid = player_bid
+                self._next_player()
         print(self.passed_players)
         winner = self.passed_players.pop()
         print(winner)
