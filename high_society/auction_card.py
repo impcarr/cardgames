@@ -10,7 +10,7 @@ class AuctionCard:
         self._end_game = False
         self._disgrace = False
         self._theft = False
-        self._multiplier = False
+        self._is_multiplier = False
 
     def __repr__(self) -> str:
         return f"{self._name} ({self._card_type}) : {self._value}"
@@ -41,22 +41,22 @@ class AuctionCard:
         return self._theft
 
     def is_multiplier(self) -> bool:
-        return self._multiplier
+        return self._is_multiplier
 
 
 class LuxuryCard(AuctionCard):
     def __init__(self, name: str, value: float):
         super().__init__(name, "Luxury")
-        self.value = value
+        self._value = value
 
 
 class MultiplierCard(AuctionCard):
     def __init__(self, name: str, value: float):
         super().__init__(name, "Multiplier")
-        self._multiplier = True
+        self._is_multiplier = True
         self._end_game = True
         self._value = value
-        self._disgrace = self._multiplier < 1
+        self._disgrace = (self._value < 1)
 
 
 class FauxPasCard(AuctionCard):
