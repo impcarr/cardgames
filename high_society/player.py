@@ -107,28 +107,9 @@ class Player:
                 return False
         return True
 
-    def bid_or_pass_randomly(self, current_highest_bid: List[int]) -> List[int]:
-        """Randomly pass or return a valid bid based on the current bid."""
-        if self.bid == [-1]:
-            return self.bid
-        current_highest_bid_sum = sum(current_highest_bid)
-        if current_highest_bid_sum >= self.total_money:
-            self.pass_bid()
-        else:
-            if random() < 0.33:
-                self.pass_bid()
-            else:
-                self.raise_bid(self.get_random_valid_raise(current_highest_bid))
+    def bid_or_pass(self, current_highest_bid: List[int]) -> List[int]:
+        self.pass_bid()
         return self.bid
-
-    def get_random_valid_raise(self, current_highest_bid: List[int] = []) -> List[int]:
-        """Uses a nice exponential decay function to choose a bid from the list of valid bids.
-        Weights the lower bids more heavily."""
-        valid_bids = self.get_valid_bids(current_highest_bid)
-        weights = [exp(-0.5 * i) for i in range(len(valid_bids))]
-        total = sum(weights)
-        weights = [w / total for w in weights]
-        return choices(valid_bids, weights=weights, k=1)[0]
 
     def get_available_raises(self) -> List[int]:
         fund_counter = Counter(self.funds)
@@ -163,3 +144,35 @@ class Player:
     def get_total_score(self) -> float:
         """Get the total value of the player's auction cards."""
         return self._cards_won.get_score()
+    
+
+class RandomPlayer(Player):
+
+    def __init__(self, name: str, custom_funds: Optional[List[int]] = None):
+        super().__init__(name, custom_funds)
+
+    def bid_or_pass(self, current_highest_bid: List[int]) -> List[int]:
+        return self.bid_or_pass_randomly(current_highest_bid)
+
+    def bid_or_pass_randomly(self, current_highest_bid: List[int]) -> List[int]:
+        """Randomly pass or return a valid bid based on the current bid."""
+        if self.bid == [-1]:
+            return self.bid
+        current_highest_bid_sum = sum(current_highest_bid)
+        if current_highest_bid_sum >= self.total_money:
+            self.pass_bid()
+        else:
+            if random() < 0.33:
+                self.pass_bid()
+            else:
+                self.raise_bid(self.get_random_valid_raise(current_highest_bid))
+        return self.bid
+
+    def get_random_valid_raise(self, current_highest_bid: List[int] = []) -> List[int]:
+        """Uses a nice exponential decay function to choose a bid from the list of valid bids.
+        Weights the lower bids more heavily."""
+        valid_bids = self.get_valid_bids(current_highest_bid)
+        weights = [exp(-0.5 * i) for i in range(len(valid_bids))]
+        total = sum(weights)
+        weights = [w / total for w in weights]
+        return choices(valid_bids, weights=weights, k=1)[0]

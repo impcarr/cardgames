@@ -1,7 +1,7 @@
 from typing import List, Optional, Set, Dict, Any
 from random import shuffle
 from dataclasses import dataclass, field
-from player import Player
+from player import Player, RandomPlayer
 from auction_card import AuctionCardDeck, AuctionCard
 from game_event import GameEventType, GameEvent, EventHandler, ConsoleEventHandler
 
@@ -19,7 +19,7 @@ class AuctionState:
 
 class HighSociety:
     def __init__(self, player_names: List[str], event_handler: Optional[EventHandler] = None):
-        self._players = [Player(name) for name in player_names]
+        self._players: List[Player] = [RandomPlayer(name) for name in player_names]
         shuffle(self._players)
         self._deck = AuctionCardDeck()
         self._game_progress = 0
@@ -131,7 +131,7 @@ class HighSociety:
         while len(self.passed_players) < len(self.players) - 1:
             print(f"{len(self.passed_players)} have passed out of {len(self.players)}")
             print(f"{self.current_player} now bidding...")
-            player_bid = self.current_player.bid_or_pass_randomly(
+            player_bid = self.current_player.bid_or_pass(
                 self.auction_state.current_bid
             )
             print(f"{self.current_player} bids {player_bid}")
@@ -168,7 +168,7 @@ class HighSociety:
         Returns the player who obtains the auctioned card."""
         while len(self.passed_players) == 0:
             print(f"{len(self.passed_players)} have passed.")
-            player_bid = self.current_player.bid_or_pass_randomly(
+            player_bid = self.current_player.bid_or_pass(
                 self.auction_state.current_bid
             )
             if player_bid == [-1]:
@@ -283,7 +283,7 @@ def play_sample_game() -> Optional[Player]:
     if winner:
         game._emit_event(GameEventType.GAME_ENDED, {
                     'player': winner,
-                    'score': scores[player]
+                    'score': scores[winner]
                 })
 
     for player in game.players:
