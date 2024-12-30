@@ -1,8 +1,9 @@
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict, Any
 from random import shuffle
 from dataclasses import dataclass, field
 from player import Player
 from auction_card import AuctionCardDeck, AuctionCard
+from game_event import GameEventType, GameEvent, EventHandler, ConsoleEventHandler
 
 DEFAULT_GAME_LENGTH = 4
 
@@ -17,7 +18,7 @@ class AuctionState:
     current_bid: List[int] = field(default_factory=list)
 
 class HighSociety:
-    def __init__(self, player_names: List[str]):
+    def __init__(self, player_names: List[str], event_handler: Optional[EventHandler] = None):
         self._players = [Player(name) for name in player_names]
         shuffle(self._players)
         self._deck = AuctionCardDeck()
@@ -25,6 +26,7 @@ class HighSociety:
         self._current_card: AuctionCard
         self.auction_state = AuctionState()
         self._scores: dict[Player, float] = {}
+        self.event_handler = event_handler or ConsoleEventHandler()
 
     @property
     def players(self) -> List[Player]:
@@ -61,6 +63,11 @@ class HighSociety:
         """Returns the set of passed players"""
         return self.auction_state.passed_players
     
+    def _emit_event(self, event_type: GameEventType, data: Dict[str, Any]) -> None:
+        """Emit a game event to the registered handler."""
+        if self.event_handler:
+            self.event_handler.handle_event(GameEvent(event_type, data))
+    
     def mark_player_passed(self, player: Player) -> None:
         """Mark a player as having passed the current auction.
         
@@ -95,6 +102,9 @@ class HighSociety:
         """Start a new auction by revealing the top card
         Returns the current card or None if the current card ends the game."""
         self.current_card = self.deck.draw()
+        self._emit_event(GameEventType.CARD_DRAWN, {
+            'card': self.current_card
+        })
         if self.current_card.is_end_game():
             self.increment_game_progress()
         if self.game_progress == DEFAULT_GAME_LENGTH:
@@ -106,6 +116,9 @@ class HighSociety:
         Returns the player who won the auction"""
         if self.current_card is None:
             raise ValueError("No card to auction")
+        self._emit_event(GameEventType.AUCTION_STARTED, {
+            'card': self.current_card
+        })
         self.reset_auction()
         if self.current_card.is_disgrace():
             return self.hold_auction_to_avoid()
@@ -124,17 +137,31 @@ class HighSociety:
             print(f"{self.current_player} bids {player_bid}")
             if player_bid == [-1]:
                 self.mark_player_passed(self.current_player)
+                self._emit_event(GameEventType.PLAYER_PASSED, {
+                    'player': self.current_player
+                })
             else:
                 self.auction_state.current_bid = player_bid
+                self._emit_event(GameEventType.PLAYER_BID, {
+                    'player': self.current_player,
+                    'bid': player_bid
+                })
             self._next_player()
-        for player in self.players:
-            print(f"{player.name} has bid {player.bid}")
-        print(f"{self.passed_players} have all passed")
-        self._next_player()
-        print(f"{self.current_player} wins the auction!")
-        self.current_player.win_card(self.current_card)
-        self.current_player.spend_bid()
-        return self.current_player
+
+        winner = self.current_player
+        winner.win_card(self.current_card)
+        self._emit_event(GameEventType.AUCTION_WON, {
+            'player': winner,
+            'card': self.current_card
+        })
+        
+        winner.spend_bid()
+        self._emit_event(GameEventType.PLAYER_FUNDS_UPDATED, {
+            'player': winner,
+            'funds': winner.funds
+        })
+
+        return winner
 
     def hold_auction_to_avoid(self) -> Player:
         """Hold an auction to avoid the current card.
@@ -144,20 +171,33 @@ class HighSociety:
             player_bid = self.current_player.bid_or_pass_randomly(
                 self.auction_state.current_bid
             )
-            print(self.current_player.name)
-            print(player_bid)
             if player_bid == [-1]:
                 self.mark_player_passed(self.current_player)
+                self._emit_event(GameEventType.PLAYER_PASSED, {
+                    'player': self.current_player
+                })
             else:
                 self.auction_state.current_bid = player_bid
+                self._emit_event(GameEventType.PLAYER_BID, {
+                    'player': self.current_player,
+                    'bid': player_bid
+                })
                 self._next_player()
-        print(self.passed_players)
+        
         winner = self.passed_players.pop()
-        print(winner)
         winner.win_card(self.current_card)
+        self._emit_event(GameEventType.AUCTION_WON, {
+            'player': winner,
+            'card': self.current_card
+        })
+        
         for player in self.players:
             if player is not winner:
                 player.spend_bid()
+                self._emit_event(GameEventType.PLAYER_FUNDS_UPDATED, {
+                    'player': player,
+                    'funds': player.funds
+                })
         return winner
 
     def _next_player(self) -> None:
@@ -212,7 +252,7 @@ def play_sample_game() -> Optional[Player]:
     """Plays a sample game of high society. Returns the winner if there is one."""
     game = HighSociety(["Alice", "Bob", "Charlie", "David"])
     card_count = 0
-    while game.draw_new_auction_card() is not None:
+    while game.draw_new_auction_card() is not None and game.game_progress<DEFAULT_GAME_LENGTH:
         card_count += 1
 
         print(
@@ -235,10 +275,16 @@ def play_sample_game() -> Optional[Player]:
             )
 
         print("\n")
+    
 
     scores = game.calculate_scores()
     print(f"\nFinal Scores: {scores}")
-    print(f"Winner: {game.get_winner()}")
+    winner = game.get_winner()
+    if winner:
+        game._emit_event(GameEventType.GAME_ENDED, {
+                    'player': winner,
+                    'score': scores[player]
+                })
 
     for player in game.players:
         print(
