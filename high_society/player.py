@@ -176,3 +176,73 @@ class RandomPlayer(Player):
         total = sum(weights)
         weights = [w / total for w in weights]
         return choices(valid_bids, weights=weights, k=1)[0]
+    
+class HumanPlayer(Player):
+    def bid_or_pass(self, current_highest_bid: List[int]) -> List[int]:
+        """Override the random bidding with human input"""
+        if self.bid == [-1]:
+            return self.bid
+            
+        current_bid_sum = sum(current_highest_bid)
+        print(f"\nCurrent highest bid: {current_bid_sum}")
+        print(f"Your available funds: {sorted(self.funds)}")
+        print(f"Your current bid: {sorted(self.bid)} (total: {sum(self.bid)})")
+        print(f"Your total money: {self.total_money}")
+        
+        while True:
+            action = input("Would you like to (b)id or (p)ass? ").lower()
+            
+            if action == 'p':
+                self.pass_bid()
+                return self.bid
+            elif action == 'b':
+                constructed_bid = self.bid.copy()  # Start with current bid
+                available_funds = self.get_available_raises()
+                
+                while True:
+                    print(f"\nCurrent constructed bid: {sorted(constructed_bid)} (total: {sum(constructed_bid)})")
+                    print(f"Available funds to add: {sorted(available_funds)}")
+                    print("Enter a fund value to add to your bid")
+                    print("Enter 'd' to remove the last added fund")
+                    print("Enter 'f' to finalize bid")
+                    print("Enter 'c' to cancel and pass")
+                    
+                    choice = input("Your choice: ").lower()
+                    
+                    if choice == 'c':
+                        self.pass_bid()
+                        return self.bid
+                    elif choice == 'f':
+                        if not constructed_bid:
+                            print("Cannot submit empty bid. Please add funds or pass.")
+                            continue
+                        
+                        # Validate the complete bid
+                        try:
+                            if sum(constructed_bid) <= current_bid_sum:
+                                print("Bid must be higher than the current highest bid.")
+                                continue
+                            self.bid = constructed_bid
+                            return self.bid
+                        except ValueError as e:
+                            print(f"Invalid bid: {e}")
+                            continue
+                    elif choice == 'd':
+                        if constructed_bid:
+                            removed_fund = constructed_bid.pop()
+                            available_funds.append(removed_fund)
+                            available_funds.sort()
+                        else:
+                            print("No funds to remove from current bid.")
+                    else:
+                        try:
+                            fund = int(choice)
+                            if fund in available_funds:
+                                constructed_bid.append(fund)
+                                available_funds.remove(fund)
+                            else:
+                                print("That fund is not available.")
+                        except ValueError:
+                            print("Please enter a valid fund value or command.")
+            else:
+                print("Invalid input. Please enter 'b' for bid or 'p' for pass.")

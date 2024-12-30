@@ -1,7 +1,7 @@
 from typing import List, Optional, Set, Dict, Any
-from random import shuffle
+from random import shuffle, randint
 from dataclasses import dataclass, field
-from player import Player, RandomPlayer
+from player import Player, RandomPlayer, HumanPlayer
 from auction_card import AuctionCardDeck, AuctionCard
 from game_event import GameEventType, GameEvent, EventHandler, ConsoleEventHandler
 
@@ -27,6 +27,15 @@ class HighSociety:
         self.auction_state = AuctionState()
         self._scores: dict[Player, float] = {}
         self.event_handler = event_handler or ConsoleEventHandler()
+
+    @classmethod
+    def create_with_human_player(cls, player_names: List[str], human_name: str, event_handler: Optional[EventHandler] = None) -> 'HighSociety':
+        """Create a game with one human player and the rest AI players."""
+        # Remove an AI player from the list at random and initialize the game without it
+        player_names.pop(randint(0,len(player_names)-1))
+        game = cls(player_names, event_handler)
+        game.players.append(HumanPlayer(human_name))
+        return game
 
     @property
     def players(self) -> List[Player]:
@@ -248,9 +257,13 @@ class HighSociety:
             return max(eligible_winners, key=lambda player: player.get_total_score())
 
 
-def play_sample_game() -> Optional[Player]:
+def play_sample_game(human_player: bool = False, human_name: str = '') -> Optional[Player]:
     """Plays a sample game of high society. Returns the winner if there is one."""
-    game = HighSociety(["Alice", "Bob", "Charlie", "David"])
+    default_player_names = ["Alice", "Bob", "Caroline", "David"]
+    if human_player:
+        game = HighSociety.create_with_human_player(default_player_names, human_name)
+    else:
+        game = HighSociety(default_player_names)
     card_count = 0
     while game.draw_new_auction_card() is not None and game.game_progress<DEFAULT_GAME_LENGTH:
         card_count += 1
@@ -294,4 +307,9 @@ def play_sample_game() -> Optional[Player]:
 
 
 if __name__ == "__main__":
-    play_sample_game()
+    human_choice = input("Would you like to play as a human player? (y/n): ").lower()
+    if human_choice == 'y':
+        chosen_name = input("Please type the name you'd like to use: ")
+        play_sample_game(human_player = True, human_name=chosen_name)
+    else:
+        play_sample_game()
